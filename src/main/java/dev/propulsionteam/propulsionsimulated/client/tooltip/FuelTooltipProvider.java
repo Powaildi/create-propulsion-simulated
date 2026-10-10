@@ -33,20 +33,21 @@ public final class FuelTooltipProvider implements ITooltipProvider {
             return;
         }
         TooltipHandler.wrapShiftHoldText(tooltipList, "createpropulsion.tooltip.holdForRocketFuelSummary", () -> {
-            final float effectiveThrustMultiplier = properties.thrustMultiplier()
-                    * ThrusterFuelManager.getEfficiency(fluidStack.getFluid());
+            final float effectiveThrustMultiplier = ThrusterFuelManager.getEfficiency(fluidStack.getFluid());
             final int thrustPercent = Math.round(effectiveThrustMultiplier * 100.0f);
             final Component thrustLine = Component.translatable("createpropulsion.tooltip.thrust")
                     .append(": ")
                     .withStyle(Palette.STANDARD_CREATE.primary())
-                    .append(Component.literal(Integer.toString(thrustPercent)).withStyle(Palette.STANDARD_CREATE.highlight()))
+                    .append(Component.literal(Integer.toString(thrustPercent))
+                            .withStyle(Palette.STANDARD_CREATE.highlight()))
                     .append(Component.literal("%").withStyle(Palette.STANDARD_CREATE.primary()));
             tooltipList.add(thrustLine);
             final int consumptionPercent = Math.round(properties.consumptionMultiplier() * 100.0f);
             final Component consumptionLine = Component.translatable("createpropulsion.tooltip.consumption")
                     .append(": ")
                     .withStyle(Palette.STANDARD_CREATE.primary())
-                    .append(Component.literal(Integer.toString(consumptionPercent)).withStyle(Palette.STANDARD_CREATE.highlight()))
+                    .append(Component.literal(Integer.toString(consumptionPercent))
+                            .withStyle(Palette.STANDARD_CREATE.highlight()))
                     .append(Component.literal("%").withStyle(Palette.STANDARD_CREATE.primary()));
             tooltipList.add(consumptionLine);
             tooltipList.add(Component.empty());
@@ -58,4 +59,3 @@ public final class FuelTooltipProvider implements ITooltipProvider {
         return Optional.empty();
     }
 }
-

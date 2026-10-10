@@ -74,7 +74,8 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
     @Nullable
     @SuppressWarnings("deprecation")
     public static FluidThrusterProperties getProperties(Fluid fluid) {
-        if (fluid == null || fluid == Fluids.EMPTY) return null;
+        if (fluid == null || fluid == Fluids.EMPTY)
+            return null;
         fluid = FluidHelper.convertToStill(fluid);
         ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
         if (fluidId != null && removedFuelIds.contains(fluidId)) {
@@ -101,6 +102,18 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         // Normalize flowing variants (e.g. flowing_lava) to their source fluid ids.
         fluid = FluidHelper.convertToStill(fluid);
 
+        // 1) KubeJS scripted
+        FluidThrusterProperties scripted = scriptedFuelPropertiesMap.get(fluid);
+        if (scripted == null) {
+            ResourceLocation id = BuiltInRegistries.FLUID.getKey(fluid);
+            if (id != null) {
+                scripted = scriptedFuelPropertiesById.get(id);
+            }
+        }
+        if (scripted != null) {
+            return scripted.thrustMultiplier();
+        }
+
         ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
         if (fluidId == null) {
             return 1.0f;
@@ -110,8 +123,9 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
     }
 
     @Override
-    protected void apply(@Nonnull Map<ResourceLocation, JsonElement> pObject, @Nonnull ResourceManager resourceManager, @Nonnull ProfilerFiller profiler) {
-        //Parse datapacks
+    protected void apply(@Nonnull Map<ResourceLocation, JsonElement> pObject, @Nonnull ResourceManager resourceManager,
+            @Nonnull ProfilerFiller profiler) {
+        // Parse datapacks
         profiler.push(CreatePropulsion.ID + ":Loading_thruster_fuels");
         cachedThrusterFuelDatapack = new HashMap<>(pObject);
         fuelEfficiencyOverrides = getConfiguredEfficiencyOverrides();
@@ -121,17 +135,18 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         ConfigMergeStats mergeStats = mergeConfigProperties(fuelPropertiesMap);
         logReloadSummary("datapack_reload", parseResult, mergeStats);
         profiler.pop();
-        //Update clients (happens only on /reload as on server start server instance is still null)
+        // Update clients (happens only on /reload as on server start server instance is
+        // still null)
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server != null && server.isRunning()) {
             PropulsionPackets.sendToAll(SyncThrusterFuelsPacket.create(
-                getFuelPropertiesMap(), getRemovedFuelIds(), getEfficiencyOverrides()));
+                    getFuelPropertiesMap(), getRemovedFuelIds(), getEfficiencyOverrides()));
         }
     }
 
     public static void updateClient(Map<ResourceLocation, FluidThrusterProperties> fuelMap,
-                                    Set<ResourceLocation> removedFuelIdsFromServer,
-                                    Map<ResourceLocation, Float> efficiencyOverridesFromServer) {
+            Set<ResourceLocation> removedFuelIdsFromServer,
+            Map<ResourceLocation, Float> efficiencyOverridesFromServer) {
         Map<Fluid, FluidThrusterProperties> newClientMap = new HashMap<>();
         fuelMap.forEach((rl, props) -> {
             Fluid fluid = BuiltInRegistries.FLUID.get(rl);
@@ -153,12 +168,14 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
 
     public static boolean registerScriptedFuel(String fluidId, Map<String, Object> settings) {
         if (settings == null) {
-            LOGGER.warn("[{}] KubeJS fuel registration failed: settings object is null for '{}'.", CreatePropulsion.ID, fluidId);
+            LOGGER.warn("[{}] KubeJS fuel registration failed: settings object is null for '{}'.", CreatePropulsion.ID,
+                    fluidId);
             return false;
         }
 
         float thrustMultiplier = getFloatSetting(settings, "thrustMultiplier", "thrust_multiplier", 1.0f);
-        float consumptionMultiplier = getFloatSetting(settings, "consumptionMultiplier", "consumption_multiplier", 1.0f);
+        float consumptionMultiplier = getFloatSetting(settings, "consumptionMultiplier", "consumption_multiplier",
+                1.0f);
         String particleName = getStringSetting(settings, "particle", "particle", "plume");
         List<String> overrideTextureIds = getStringListSetting(settings, "overrideTextures", "override_textures");
         Integer overrideColor = getColorSetting(settings, "overrideColor", "override_color");
@@ -170,14 +187,13 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
             return false;
         }
         return registerScriptedFuelInternal(
-            fluidLocation,
-            thrustMultiplier,
-            consumptionMultiplier,
-            particleName,
-            overrideTextureIds,
-            overrideColor,
-            useFluidColor
-        );
+                fluidLocation,
+                thrustMultiplier,
+                consumptionMultiplier,
+                particleName,
+                overrideTextureIds,
+                overrideColor,
+                useFluidColor);
     }
 
     public static boolean overrideFuel(String fluidIdToOverride, Map<String, Object> settings) {
@@ -201,8 +217,10 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
     }
 
     /**
-     * Re-applies datapack thruster fuels using current common config (efficiency / burn rate / additional lines).
-     * Called when {@code createpropulsion-common.toml} reloads without a full datapack reload.
+     * Re-applies datapack thruster fuels using current common config (efficiency /
+     * burn rate / additional lines).
+     * Called when {@code createpropulsion-common.toml} reloads without a full
+     * datapack reload.
      */
     public static void rebuildThrusterFuelsAfterCommonConfigReload() {
         if (cachedThrusterFuelDatapack == null) {
@@ -219,51 +237,55 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
     private static ParseResult parseFuelProperties(@Nonnull Map<ResourceLocation, JsonElement> pObject) {
         Map<Fluid, FluidThrusterProperties> newMap = new HashMap<>();
         Map<ResourceLocation, Float> consumptionOverrides = getConfiguredConsumptionOverrides();
-        int[] parsedEntries = {0};
-        int[] skippedMissingModEntries = {0};
-        int[] skippedMissingFluidEntries = {0};
+        int[] parsedEntries = { 0 };
+        int[] skippedMissingModEntries = { 0 };
+        int[] skippedMissingFluidEntries = { 0 };
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : pObject.entrySet()) {
             ResourceLocation file = entry.getKey();
             JsonElement json = entry.getValue();
 
-            //Parse fuel def
+            // Parse fuel def
             ThrusterFuelDefinition.CODEC.parse(JsonOps.INSTANCE, json)
-                .resultOrPartial(error -> {LOGGER.error("[{}] Failed to parse thruster fuel definition from {}: {}", CreatePropulsion.ID, file, error);})
-                .ifPresent(definition -> {
-                    //There is a fuel that requires a mod but the mod is not present
-                    if (definition.requiredMod().isPresent() && !ModList.get().isLoaded(definition.requiredMod().get())) {
-                        skippedMissingModEntries[0]++;
-                        return;
-                    }
-                    Fluid fluid = definition.getFluid();
-                    //Fluid is not in registry
-                    if (fluid == Fluids.EMPTY) {
-                        skippedMissingFluidEntries[0]++;
-                        return;
-                    }
-                    //Successfully load fuel
-                    FluidThrusterProperties properties = new FluidThrusterProperties(
-                        definition.thrustMultiplier(), 
-                        definition.consumptionMultiplier(),
-                        definition.particle(),
-                        definition.overrideTextures(),
-                        definition.overrideColor().map(ThrusterFuelManager::sanitizeColor).orElse(null),
-                        definition.useFluidColor());
+                    .resultOrPartial(error -> {
+                        LOGGER.error("[{}] Failed to parse thruster fuel definition from {}: {}", CreatePropulsion.ID,
+                                file, error);
+                    })
+                    .ifPresent(definition -> {
+                        // There is a fuel that requires a mod but the mod is not present
+                        if (definition.requiredMod().isPresent()
+                                && !ModList.get().isLoaded(definition.requiredMod().get())) {
+                            skippedMissingModEntries[0]++;
+                            return;
+                        }
+                        Fluid fluid = definition.getFluid();
+                        // Fluid is not in registry
+                        if (fluid == Fluids.EMPTY) {
+                            skippedMissingFluidEntries[0]++;
+                            return;
+                        }
+                        // Successfully load fuel
+                        FluidThrusterProperties properties = new FluidThrusterProperties(
+                                definition.thrustMultiplier(),
+                                definition.consumptionMultiplier(),
+                                definition.particle(),
+                                definition.overrideTextures(),
+                                definition.overrideColor().map(ThrusterFuelManager::sanitizeColor).orElse(null),
+                                definition.useFluidColor());
 
-                    ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
-                    if (fluidId != null && consumptionOverrides.containsKey(fluidId)) {
+                        ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
+                        if (fluidId != null && consumptionOverrides.containsKey(fluidId)) {
                             properties = new FluidThrusterProperties(
-                            properties.thrustMultiplier(),
-                            consumptionOverrides.get(fluidId),
-                            properties.particleType(),
-                            properties.overrideTextures(),
-                            properties.overrideColor(),
-                            properties.useFluidColor());
-                    }
-                    newMap.put(fluid, properties);
-                    parsedEntries[0]++;
-                });
+                                    properties.thrustMultiplier(),
+                                    consumptionOverrides.get(fluidId),
+                                    properties.particleType(),
+                                    properties.overrideTextures(),
+                                    properties.overrideColor(),
+                                    properties.useFluidColor());
+                        }
+                        newMap.put(fluid, properties);
+                        parsedEntries[0]++;
+                    });
         }
 
         return new ParseResult(newMap, parsedEntries[0], skippedMissingModEntries[0], skippedMissingFluidEntries[0]);
@@ -346,32 +368,31 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         for (ResourceLocation fluidId : consumptionOverrides.keySet()) {
             Fluid fluid = BuiltInRegistries.FLUID.get(fluidId);
             if (fluid == null || fluid == Fluids.EMPTY) {
-                LOGGER.warn("[{}] Ignoring fuel config override for '{}': fluid is not registered.", CreatePropulsion.ID, fluidId);
+                LOGGER.warn("[{}] Ignoring fuel config override for '{}': fluid is not registered.",
+                        CreatePropulsion.ID, fluidId);
                 missingConfigFluidIds++;
                 continue;
             }
-            
+
             if (!map.containsKey(fluid)) {
                 map.put(fluid, new FluidThrusterProperties(
-                    1.0f,
-                    consumptionOverrides.get(fluidId),
-                    ThrusterParticleType.PLUME,
-                    List.of(),
-                    null,
-                    false
-                ));
+                        1.0f,
+                        consumptionOverrides.get(fluidId),
+                        ThrusterParticleType.PLUME,
+                        List.of(),
+                        null,
+                        false));
                 addedByConfig++;
             } else {
                 FluidThrusterProperties existing = map.get(fluid);
                 if (java.lang.Math.abs(existing.consumptionMultiplier() - consumptionOverrides.get(fluidId)) > 1e-4) {
-                     map.put(fluid, new FluidThrusterProperties(
-                        existing.thrustMultiplier(),
-                        consumptionOverrides.get(fluidId),
-                        existing.particleType(),
-                        existing.overrideTextures(),
-                        existing.overrideColor(),
-                        existing.useFluidColor()
-                    ));
+                    map.put(fluid, new FluidThrusterProperties(
+                            existing.thrustMultiplier(),
+                            consumptionOverrides.get(fluidId),
+                            existing.particleType(),
+                            existing.overrideTextures(),
+                            existing.overrideColor(),
+                            existing.useFluidColor()));
                     overriddenByConfig++;
                 }
             }
@@ -385,26 +406,25 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         int scriptedEntries = scriptedFuelPropertiesMap.size();
         int removedEntries = removedFuelIds.size();
         LOGGER.info(
-            "[{}] Thruster fuel reload ({}) complete: datapackParsed={}, datapackSkippedMissingMod={}, datapackSkippedMissingFluid={}, configAdded={}, configOverridden={}, configMissingFluid={}, mergedDatapackAndConfig={}, scriptedOverrides={}, removed={}",
-            CreatePropulsion.ID,
-            context,
-            parseResult.parsedEntries(),
-            parseResult.skippedMissingModEntries(),
-            parseResult.skippedMissingFluidEntries(),
-            mergeStats.addedByConfig(),
-            mergeStats.overriddenByConfig(),
-            mergeStats.missingConfigFluidIds(),
-            totalMergedEntries,
-            scriptedEntries,
-            removedEntries
-        );
+                "[{}] Thruster fuel reload ({}) complete: datapackParsed={}, datapackSkippedMissingMod={}, datapackSkippedMissingFluid={}, configAdded={}, configOverridden={}, configMissingFluid={}, mergedDatapackAndConfig={}, scriptedOverrides={}, removed={}",
+                CreatePropulsion.ID,
+                context,
+                parseResult.parsedEntries(),
+                parseResult.skippedMissingModEntries(),
+                parseResult.skippedMissingFluidEntries(),
+                mergeStats.addedByConfig(),
+                mergeStats.overriddenByConfig(),
+                mergeStats.missingConfigFluidIds(),
+                totalMergedEntries,
+                scriptedEntries,
+                removedEntries);
     }
 
     private static void syncFuelDataToClients() {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server != null && server.isRunning()) {
             PropulsionPackets.sendToAll(SyncThrusterFuelsPacket.create(
-                getFuelPropertiesMap(), getRemovedFuelIds(), getEfficiencyOverrides()));
+                    getFuelPropertiesMap(), getRemovedFuelIds(), getEfficiencyOverrides()));
         }
     }
 
@@ -420,12 +440,13 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
             return List.of();
         }
         return overrideTextureIds.stream()
-            .map(ResourceLocation::tryParse)
-            .filter(rl -> rl != null)
-            .toList();
+                .map(ResourceLocation::tryParse)
+                .filter(rl -> rl != null)
+                .toList();
     }
 
-    private static float getFloatSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey, float fallback) {
+    private static float getFloatSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey,
+            float fallback) {
         Object value = settings.containsKey(camelCaseKey) ? settings.get(camelCaseKey) : settings.get(snakeCaseKey);
         if (value == null) {
             return fallback;
@@ -440,7 +461,8 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         }
     }
 
-    private static String getStringSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey, String fallback) {
+    private static String getStringSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey,
+            String fallback) {
         Object value = settings.containsKey(camelCaseKey) ? settings.get(camelCaseKey) : settings.get(snakeCaseKey);
         if (value == null) {
             return fallback;
@@ -448,7 +470,8 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         return value.toString();
     }
 
-    private static List<String> getStringListSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey) {
+    private static List<String> getStringListSetting(Map<String, Object> settings, String camelCaseKey,
+            String snakeCaseKey) {
         Object value = settings.containsKey(camelCaseKey) ? settings.get(camelCaseKey) : settings.get(snakeCaseKey);
         if (value == null) {
             return List.of();
@@ -480,7 +503,8 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
         }
     }
 
-    private static boolean getBooleanSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey, boolean fallback) {
+    private static boolean getBooleanSetting(Map<String, Object> settings, String camelCaseKey, String snakeCaseKey,
+            boolean fallback) {
         Object value = settings.containsKey(camelCaseKey) ? settings.get(camelCaseKey) : settings.get(snakeCaseKey);
         if (value == null) {
             return fallback;
@@ -492,15 +516,19 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
     }
 
     @SuppressWarnings("deprecation")
-    private static boolean registerScriptedFuelInternal(ResourceLocation fluidId, float thrustMultiplier, float consumptionMultiplier, String particleName, List<String> overrideTextureIds, Integer overrideColor, boolean useFluidColor) {
+    private static boolean registerScriptedFuelInternal(ResourceLocation fluidId, float thrustMultiplier,
+            float consumptionMultiplier, String particleName, List<String> overrideTextureIds, Integer overrideColor,
+            boolean useFluidColor) {
         Fluid fluid = FluidHelper.convertToStill(BuiltInRegistries.FLUID.get(fluidId));
         if (fluid == null || fluid == Fluids.EMPTY) {
-            LOGGER.warn("[{}] KubeJS fuel registration failed: fluid '{}' is not registered.", CreatePropulsion.ID, fluidId);
+            LOGGER.warn("[{}] KubeJS fuel registration failed: fluid '{}' is not registered.", CreatePropulsion.ID,
+                    fluidId);
             return false;
         }
         ThrusterParticleType particleType = ThrusterParticleType.fromString(particleName);
         List<ResourceLocation> textureOverrides = parseTextureOverrides(overrideTextureIds);
-        FluidThrusterProperties properties = new FluidThrusterProperties(thrustMultiplier, consumptionMultiplier, particleType, textureOverrides, sanitizeColor(overrideColor), useFluidColor);
+        FluidThrusterProperties properties = new FluidThrusterProperties(thrustMultiplier, consumptionMultiplier,
+                particleType, textureOverrides, sanitizeColor(overrideColor), useFluidColor);
         scriptedFuelPropertiesMap.put(fluid, properties);
         scriptedFuelPropertiesById.put(fluidId, properties);
         removedFuelIds.remove(fluidId);
@@ -509,20 +537,18 @@ public class ThrusterFuelManager extends SimpleJsonResourceReloadListener {
     }
 
     private record ParseResult(
-        Map<Fluid, FluidThrusterProperties> fuelMap,
-        int parsedEntries,
-        int skippedMissingModEntries,
-        int skippedMissingFluidEntries
-    ) {
+            Map<Fluid, FluidThrusterProperties> fuelMap,
+            int parsedEntries,
+            int skippedMissingModEntries,
+            int skippedMissingFluidEntries) {
         private ParseResult {
             fuelMap = Objects.requireNonNull(fuelMap);
         }
     }
 
     private record ConfigMergeStats(
-        int addedByConfig,
-        int overriddenByConfig,
-        int missingConfigFluidIds
-    ) {
+            int addedByConfig,
+            int overriddenByConfig,
+            int missingConfigFluidIds) {
     }
 }

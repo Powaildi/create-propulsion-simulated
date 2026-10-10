@@ -2,7 +2,6 @@ package dev.propulsionteam.propulsionsimulated.content.heat.burners.liquid;
 
 import java.util.List;
 
-
 import dev.propulsionteam.propulsionsimulated.content.heat.burners.AbstractBurnerBlock;
 import dev.propulsionteam.propulsionsimulated.content.heat.burners.AbstractBurnerBlockEntity;
 import dev.propulsionteam.propulsionsimulated.content.heat.burners.BurnerDamager;
@@ -57,7 +56,7 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
         super.addBehaviours(behaviours);
-        
+
         damager = new BurnerDamager(this);
         behaviours.add(damager);
 
@@ -74,22 +73,28 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
     }
 
     private boolean hasEnoughFuel() {
-        if (tank.isEmpty()) return false;
+        if (tank.isEmpty())
+            return false;
         FluidStack fluid = tank.getPrimaryHandler().getFluidInTank(0);
-        if (fluid.getAmount() < FUEL_CONSUMPTION_MB) return false;
+        if (fluid.getAmount() < FUEL_CONSUMPTION_MB)
+            return false;
         return ThrusterFuelManager.getProperties(fluid.getFluid()) != null;
     }
 
     private boolean isConnectedToConsumer() {
         Level level = getLevel();
-        if (level == null) return false;
+        if (level == null)
+            return false;
         BlockPos posAbove = worldPosition.above();
-        return level.getBlockEntity(posAbove) instanceof dev.propulsionteam.propulsionsimulated.content.heat.IHeatConsumer;
+        return level
+                .getBlockEntity(posAbove) instanceof dev.propulsionteam.propulsionsimulated.content.heat.IHeatConsumer;
     }
 
     public boolean isFanSpinning() {
-        if (isBurning()) return true;
-        if (hasEnoughFuel() && isConnectedToConsumer()) return true;
+        if (isBurning())
+            return true;
+        if (hasEnoughFuel() && isConnectedToConsumer())
+            return true;
         return false;
     }
 
@@ -97,14 +102,17 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
     public void tick() {
         super.tick();
         if (level.isClientSide()) {
-            if (burnTime > 0) burnTime--;
+            if (burnTime > 0)
+                burnTime--;
             tickParticles();
             return;
         }
 
         float heatGeneration = (burnTime > 0) ? getHeatPerTick() * burnEfficiency : 0;
-        if (burnTime > 0) burnTime--;
-
+        if (burnTime > 0)
+            burnTime--;
+        if (burnTime <= 0)
+            heatGeneration += 0.01;
         tickHeatPhysics(heatGeneration);
 
         boolean refueled = false;
@@ -114,7 +122,8 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
             }
         }
 
-        if (refueled) notifyUpdate();
+        if (refueled)
+            notifyUpdate();
 
         updateBlockState();
         updateHeatLevelName();
@@ -122,30 +131,31 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
 
     private void tickParticles() {
         Level level = getLevel();
-        if (level == null) return;
-        
-        //Smoke
+        if (level == null)
+            return;
+
+        // Smoke
         if (isBurning() && level.getGameTime() % 2 == 0 && !(level instanceof PonderLevel)) {
             final float PIPE_OFFSET = 2.5f / 16.0f;
             final float Y_OFFSET = 0.3f;
             final Vec3 EXHAUST_VELOCITY = new Vec3(0.01, 0.05, 0);
 
-            //Alternate pipes
+            // Alternate pipes
             boolean isLeft = level.getGameTime() % 4 == 0;
             spawnParticleEffect(
-                new Vec3(0.6, Y_OFFSET, isLeft ? PIPE_OFFSET : -PIPE_OFFSET), 
-                EXHAUST_VELOCITY,
-                ParticleTypes.SMOKE
-            );
+                    new Vec3(0.6, Y_OFFSET, isLeft ? PIPE_OFFSET : -PIPE_OFFSET),
+                    EXHAUST_VELOCITY,
+                    ParticleTypes.SMOKE);
         }
     }
 
     private void spawnParticleEffect(Vec3 localOffset, Vec3 localVelocity, ParticleOptions particle) {
         Level level = getLevel();
-        if (level == null) return;
+        if (level == null)
+            return;
         Direction facing = getBlockState().getValue(AbstractBurnerBlock.FACING);
         float yRot = -facing.toYRot();
-        
+
         Vec3 offset = VecHelper.rotate(localOffset, yRot, Direction.Axis.Y);
         Vec3 velocity = VecHelper.rotate(localVelocity, yRot, Direction.Axis.Y);
         Vec3 spawnPos = VecHelper.getCenterOf(worldPosition).add(offset);
@@ -154,22 +164,28 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
     }
 
     private boolean tryConsumeFuel() {
-        if (tank.isEmpty()) return false;
+        if (tank.isEmpty())
+            return false;
 
         FluidStack fluidInTank = tank.getPrimaryHandler().getFluidInTank(0);
-        if (fluidInTank.getAmount() < FUEL_CONSUMPTION_MB) return false;
+        if (fluidInTank.getAmount() < FUEL_CONSUMPTION_MB)
+            return false;
 
         var fuelProperties = ThrusterFuelManager.getProperties(fluidInTank.getFluid());
-        if (fuelProperties == null) return false;
+        if (fuelProperties == null)
+            return false;
 
         float multiplier = fuelProperties.consumptionMultiplier();
-        if (multiplier <= 0) multiplier = 1;
-        
-        float fluidEfficiency = (float) fuelProperties.thrustMultiplier();
-        if (fluidEfficiency <= 0) fluidEfficiency = 1;
+        if (multiplier <= 0)
+            multiplier = 1;
+
+        float fluidEfficiency = ThrusterFuelManager.getEfficiency(fluidInTank.getFluid());
+        if (fluidEfficiency <= 0)
+            fluidEfficiency = 1;
 
         int duration = (int) ((BASE_BURN_DURATION / multiplier) * fluidEfficiency);
-        if (duration < 1) duration = 1;
+        if (duration < 1)
+            duration = 1;
 
         FluidStack drained = tank.getPrimaryHandler().drain(FUEL_CONSUMPTION_MB, IFluidHandler.FluidAction.EXECUTE);
         if (drained.getAmount() == FUEL_CONSUMPTION_MB) {
@@ -181,8 +197,8 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
     }
 
     public boolean tryConsumeFuelBucket(final Player player,
-                                        final InteractionHand hand,
-                                        final ItemStack heldStack) {
+            final InteractionHand hand,
+            final ItemStack heldStack) {
         if (this.tank == null) {
             return false;
         }
@@ -234,12 +250,19 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
     }
 
     @Override
-    public float getHeatPerTick() { return 2; }
+    public float getHeatPerTick() {
+        return 2;
+    }
 
     @Override
-    protected Direction getHeatCapSide() { return Direction.UP; }
+    protected Direction getHeatCapSide() {
+        return Direction.UP;
+    }
+
     @Override
-    protected float getBaseHeatCapacity() { return MAX_HEAT; }
+    protected float getBaseHeatCapacity() {
+        return MAX_HEAT;
+    }
 
     @Override
     protected void addSpecificTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
@@ -250,7 +273,7 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
         return tank == null ? null : tank.getPrimaryHandler();
     }
 
-    //Pipes & caps
+    // Pipes & caps
 
     protected Direction.Axis getPipeAxis() {
         if (getBlockState().hasProperty(HorizontalDirectionalBlock.FACING)) {
@@ -281,4 +304,3 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
         burnEfficiency = tag.contains("burnEfficiency") ? tag.getFloat("burnEfficiency") : 1.0f;
     }
 }
-
