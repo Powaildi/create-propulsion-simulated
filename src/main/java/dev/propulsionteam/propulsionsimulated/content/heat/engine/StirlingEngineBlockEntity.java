@@ -52,12 +52,16 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
         }
     }
 
-    public StirlingScrollValueBehaviour getTargetSpeedBehaviour() { return targetSpeedBehaviour; }
+    public StirlingScrollValueBehaviour getTargetSpeedBehaviour() {
+        return targetSpeedBehaviour;
+    }
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviors) {
         super.addBehaviours(behaviors);
-        targetSpeedBehaviour = new StirlingScrollValueBehaviour(Component.translatable("createpropulsion.stirling_engine.generated_speed"), this, new StirlingEngineValueBox());
+        targetSpeedBehaviour = new StirlingScrollValueBehaviour(
+                Component.translatable("createpropulsion.stirling_engine.generated_speed"), this,
+                new StirlingEngineValueBox());
         targetSpeedBehaviour.value = 4;
         targetSpeedBehaviour.withCallback(i -> this.updateGeneratedRotation());
         behaviors.add(targetSpeedBehaviour);
@@ -85,7 +89,8 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
     @Override
     public void tick() {
         super.tick();
-        if (level.isClientSide) return;
+        if (level.isClientSide)
+            return;
 
         if (firstTick) {
             firstTick = false;
@@ -113,13 +118,18 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
     }
 
     private void tickBlazeBurnerHeat() {
-        if (!isEngineActive()) return;
-        if (!PropulsionConfig.BLAZE_BURNERS_HEAT_STIRLING_ENGINES.get()) return;
+        if (!isEngineActive())
+            return;
+        if (!PropulsionConfig.BLAZE_BURNERS_HEAT_STIRLING_ENGINES.get())
+            return;
 
         BlockState below = level.getBlockState(worldPosition.below());
-        if (!(below.getBlock() instanceof BlazeBurnerBlock)) return;
-        if (!below.hasProperty(BlazeBurnerBlock.HEAT_LEVEL)) return;
-        if (!below.getValue(BlazeBurnerBlock.HEAT_LEVEL).isAtLeast(HeatLevel.FADING)) return;
+        if (!(below.getBlock() instanceof BlazeBurnerBlock))
+            return;
+        if (!below.hasProperty(BlazeBurnerBlock.HEAT_LEVEL))
+            return;
+        if (!below.getValue(BlazeBurnerBlock.HEAT_LEVEL).isAtLeast(HeatLevel.FADING)) // fading
+            return;
 
         boolean wasInactive = activeTicks == 0;
         activeTicks = 3;
@@ -130,27 +140,31 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
 
     @Override
     public boolean isActive() {
-        return isEngineActive(); 
+        return isEngineActive();
     }
 
     @Override
     public float getOperatingThreshold() {
-        return 0.1f;
+        return 0.3f; // 0.1f
     }
 
     @Override
     public float consumeHeat(float maxAvailable, float expectedHeatOutput, boolean simulate) {
-        if (!isEngineActive()) return 0f;
+        if (!isEngineActive())
+            return 0f;
 
         float rpm = targetSpeedBehaviour.getUnsignedRPM();
         float modeConsumptionFactor = rpm / MAX_GENERATED_RPM;
-        float toConsume = Math.min(modeConsumptionFactor * HEAT_CONSUMPTION_RATE, maxAvailable); //Do not care about expected heat output (we always consume less than it)
+        float toConsume = Math.min(modeConsumptionFactor * HEAT_CONSUMPTION_RATE, maxAvailable); // Do not care about
+                                                                                                 // expected heat output
+                                                                                                 // (we always consume
+                                                                                                 // less than it)
 
         if (!simulate && toConsume > 0) {
             boolean wasInactive = activeTicks == 0;
             activeTicks = 3;
 
-            //We were off, but now we are activate -> update rotation
+            // We were off, but now we are activate -> update rotation
             if (wasInactive) {
                 updateGeneratedRotation();
             }
@@ -161,16 +175,19 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
 
     @Override
     public float getGeneratedSpeed() {
-        if (!isEngineActive() || activeTicks <= 0) return 0f;
+        if (!isEngineActive() || activeTicks <= 0)
+            return 0f;
         int generatedRPM = targetSpeedBehaviour.getRPM();
         return convertToDirection(generatedRPM, getBlockState().getValue(StirlingEngineBlock.HORIZONTAL_FACING));
     }
 
     @Override
     public float calculateAddedStressCapacity() {
-        if (!isEngineActive() || activeTicks <= 0) return 0f;
+        if (!isEngineActive() || activeTicks <= 0)
+            return 0f;
         float rpm = targetSpeedBehaviour.getUnsignedRPM();
-        if (rpm == 0) return 0f; 
+        if (rpm == 0)
+            return 0f;
 
         float stressFactor = MAX_GENERATED_RPM / rpm;
         float capacity = stressFactor * PropulsionConfig.STIRLING_GENERATED_SU.get().floatValue();
@@ -182,9 +199,9 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         CreateLang.builder()
-            .add(Component.translatable("createpropulsion.gui.goggles.title.generator_stats"))
-            .style(ChatFormatting.WHITE)
-            .forGoggles(tooltip);
+                .add(Component.translatable("createpropulsion.gui.goggles.title.generator_stats"))
+                .style(ChatFormatting.WHITE)
+                .forGoggles(tooltip);
         boolean active = isEngineActive();
 
         String status;
@@ -203,16 +220,16 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
         }
 
         CreateLang.builder()
-            .add(Component.translatable("createpropulsion.gui.goggles.stirling_engine.status"))
-            .text(": ")
-            .add(Component.translatable(status).withStyle(statusColor))
-            .forGoggles(tooltip);
+                .add(Component.translatable("createpropulsion.gui.goggles.stirling_engine.status"))
+                .text(": ")
+                .add(Component.translatable(status).withStyle(statusColor))
+                .forGoggles(tooltip);
 
         if (PropulsionCompatibility.CC_ACTIVE && computerBehaviour != null && computerBehaviour.hasAttachedComputer()) {
             CreateLang.builder()
-                .add(Component.translatable("createpropulsion.gui.goggles.cc.peripheral_controlled"))
-                .style(ChatFormatting.GRAY)
-                .forGoggles(tooltip);
+                    .add(Component.translatable("createpropulsion.gui.goggles.cc.peripheral_controlled"))
+                    .style(ChatFormatting.GRAY)
+                    .forGoggles(tooltip);
         }
 
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
@@ -220,7 +237,8 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
     }
 
     @Override
-    protected void write(CompoundTag compound, net.minecraft.core.HolderLookup.Provider registries, boolean clientPacket) {
+    protected void write(CompoundTag compound, net.minecraft.core.HolderLookup.Provider registries,
+            boolean clientPacket) {
         super.write(compound, registries, clientPacket);
         compound.putInt("activeTicks", activeTicks);
         compound.putBoolean("isPowered", isPowered);
@@ -228,7 +246,8 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
     }
 
     @Override
-    protected void read(CompoundTag compound, net.minecraft.core.HolderLookup.Provider registries, boolean clientPacket) {
+    protected void read(CompoundTag compound, net.minecraft.core.HolderLookup.Provider registries,
+            boolean clientPacket) {
         super.read(compound, registries, clientPacket);
         activeTicks = compound.getInt("activeTicks");
         isPowered = compound.getBoolean("isPowered");
@@ -239,4 +258,3 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
         }
     }
 }
-
