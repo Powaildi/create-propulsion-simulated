@@ -111,8 +111,7 @@ public class LiquidBurnerBlockEntity extends AbstractBurnerBlockEntity {
         float heatGeneration = (burnTime > 0) ? getHeatPerTick() * burnEfficiency : 0;
         if (burnTime > 0)
             burnTime--;
-        if (burnTime <= 0)
-            heatGeneration += 0.01;
+
         tickHeatPhysics(heatGeneration);
 
         boolean refueled = false;
