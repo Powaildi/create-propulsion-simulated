@@ -23,7 +23,7 @@ public class HeatMapper {
     }
 
     public static HeatLevelString getHeatString(float percentage) {
-        if (percentage > 0.6f) return HeatLevelString.SEARING;
+        if (percentage > 0.9f) return HeatLevelString.SEARING;
         if (percentage > 0.3f) return HeatLevelString.HOT;
         if (percentage > 0.1f) return HeatLevelString.WARM; 
         return HeatLevelString.COLD;
