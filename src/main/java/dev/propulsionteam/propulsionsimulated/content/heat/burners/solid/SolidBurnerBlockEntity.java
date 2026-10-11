@@ -67,7 +67,7 @@ public class SolidBurnerBlockEntity extends AbstractBurnerBlockEntity implements
     }
 
     @Override
-    public float getHeatPerTick() { return 1; }
+    public float getHeatPerTick() { return 2; }
 
     @Override
     public void tick() {
