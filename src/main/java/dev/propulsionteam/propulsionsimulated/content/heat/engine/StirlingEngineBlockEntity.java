@@ -145,7 +145,7 @@ public class StirlingEngineBlockEntity extends GeneratingKineticBlockEntity impl
 
     @Override
     public float getOperatingThreshold() {
-        return 0.3f; // 0.1f
+        return 0.25f; // 0.1f
     }
 
     @Override
